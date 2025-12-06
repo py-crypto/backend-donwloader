@@ -14,6 +14,9 @@ class VideoRequest(BaseModel):
     url: str
     format: str = "480p"   # default format
 
+@app.get("/")
+def home():
+    return {"message": "Backend is running!"}
 
 def get_format_code(formats, target_format):
     for f in formats:
