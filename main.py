@@ -12,51 +12,72 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 class VideoRequest(BaseModel):
     url: str
-    format: str = "480p"   # default format
-
-@app.get("/")
-def home():
-    return {"message": "Backend is running!"}
-
-def get_format_code(formats, target_format):
-    for f in formats:
-        if f.get("height") and str(f["height"]) == target_format.replace("p", ""):
-            return f["format_id"]
-    return None
+    format: str = None  # optional for formats endpoint
 
 
 @app.post("/download")
 def download_video(data: VideoRequest):
     url = data.url
-    target_format = data.format
+    format_id = data.format
 
     temp_id = str(uuid.uuid4())
     output_path = f"{DOWNLOAD_DIR}/{temp_id}.mp4"
 
     try:
-        # First fetch info to find correct format ID
-        ydl_opts_info = {"quiet": True, "skip_download": True}
-        with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
+        # Validate the URL and fetch available formats
+        ydl_info_opts = {"quiet": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(ydl_info_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        format_code = get_format_code(info.get("formats", []), target_format)
+        available_ids = [f["format_id"] for f in info.get("formats", [])]
 
-        if not format_code:
+        if format_id not in available_ids:
             raise HTTPException(
                 status_code=400,
-                detail=f"Format {target_format} not available for this video."
+                detail=f"format_id {format_id} is not available for this video."
             )
 
-        # Download specific format
+        # Download EXACT format_id
         ydl_opts = {
-            "format": format_code,
+            "format": format_id,
             "outtmpl": output_path
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return {"download_id": temp_id, "status": "success"}
+        return {"download_id": temp_id, "status": "success", "title": info.get("title", "video")}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/formats")
+def get_formats(data: VideoRequest):
+    url = data.url
+    try:
+        with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        formats_list = []
+        for f in info.get("formats", []):
+            if f['vcodec'] != 'none' and f['acodec'] != 'none':  # only video+audio
+                formats_list.append({
+                    "format_id": f["format_id"],
+                    "resolution": f.get("height"),
+                    "ext": f.get("ext"),
+                    "note": f.get("format_note")
+                })
+
+        # remove duplicates by resolution, keep highest quality per resolution
+        seen_res = set()
+        unique_formats = []
+        for f in sorted(formats_list, key=lambda x: x["resolution"] or 0):
+            if f["resolution"] not in seen_res and f["resolution"] is not None:
+                seen_res.add(f["resolution"])
+                unique_formats.append(f)
+
+        return {"title": info.get("title", "video"), "formats": unique_formats}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -65,6 +86,7 @@ def download_video(data: VideoRequest):
 @app.get("/get_file/{download_id}")
 def get_file(download_id: str):
     file_path = f"{DOWNLOAD_DIR}/{download_id}.mp4"
+
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found.")
 
