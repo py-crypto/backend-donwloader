@@ -14,10 +14,12 @@ class data(BaseModel):
 class VideoRequest(BaseModel):
 	url:str
 	format_id:str
-
+class file(BaseModel):
+	file_path:str
+	file_name:str
 os.makedirs('downloads',exist_ok=True)
 
-#will return audio+video file formats with format_id,resolutio.height,ext and takes input as-url:str
+#will return audio+video file formats with title,format_id,resolution,height,ext and takes input as-url:str
 @app.post('/get_format')
 def get_format(data:data):
 	ydl_opts={'list_formats':True,'skip_download':True}
@@ -42,11 +44,10 @@ def download_vid(data:VideoRequest):
 	ydl_opts={'format':format_id,'outtmpl':file_name}
 	with yt_dlp.YoutubeDL(ydl_opts) as yd1:
 		yd1.download([url])
-	return {'file_location':f'downloads/{file_name}','status':'success'}
+	return {'file_location':f'downloads/{file_name}','file_name':file_name}
 	
 	
-@app.post('/download_video')
-def download_video_device():
-	file_path=f'downloads/{file_name}'
-	return FileResponse(path=file_path,media_type='video/mp4',filename=file_name)
+@app.post('/download_file')
+def download_video_device(file_path:file):
+	return FileResponse(path=file_path.file_path,media_type='video/mp4',filename=file_path.file_name)
 	
