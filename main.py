@@ -47,7 +47,7 @@ def download_vid(data:VideoRequest):
 	return {'file_location':f'downloads/{file_name}','file_name':file_name}
 	
 	
-@app.post('/download_file')
-def download_video_device(file_path:file):
-	return FileResponse(path=file_path.file_path,media_type='video/mp4',filename=file_path.file_name)
+@app.get('/download_file/')
+def download_video_device(file_path:str,file_name:str):
+	return FileResponse(path=file_path,media_type='video/mp4',filename=file_name)
 	
