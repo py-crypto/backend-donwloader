@@ -9,6 +9,7 @@ import os
 import uuid
 
 app=FastAPI()
+
 class data(BaseModel):
 	url:str
 class VideoRequest(BaseModel):
@@ -17,6 +18,7 @@ class VideoRequest(BaseModel):
 class file(BaseModel):
 	file_path:str
 	file_name:str
+
 os.makedirs('downloads',exist_ok=True)
 
 #will return audio+video file formats with title,format_id,resolution,height,ext and takes input as-url:str
@@ -25,16 +27,14 @@ def get_format(data:data):
 	ydl_opts={'list_formats':True,'skip_download':True}
 	with yt_dlp.YoutubeDL(ydl_opts) as yd1:
 		content=yd1.extract_info(data.url ,download=False)
-	info={}
-	info['title']=content.get('title','video')
 	avl_formats={}
 	for f in content.get('formats',[]):
 		if f['vcodec'] != 'none' and f['acodec'] != 'none':
-			avl_formats[f['format_id']]=f['height']
-	info['avl_formats']=avl_formats
-	title_info=content.get('title','video').replace(' ','_')
-	return info
-file_name=''
+			avl_formats[f['height']]=f['format_id']
+	return avl_formats
+	
+
+
 #downloads the video and takes input as url in string and format_id in str as well
 @app.post('/download')
 def download_vid(data:VideoRequest):
@@ -47,7 +47,12 @@ def download_vid(data:VideoRequest):
 	return {'file_location':f'downloads/{file_name}','file_name':file_name}
 	
 	
-@app.get('/download_file/')
+
+@app.get('/download_file')
 def download_video_device(file_path:str,file_name:str):
 	return FileResponse(path=file_path,media_type='video/mp4',filename=file_name)
 	
+
+@app.delete('/delete_file')
+def delete_file(file_name:str):
+	file_path=f'downloads/{file_name}'
