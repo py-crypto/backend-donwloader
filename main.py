@@ -50,7 +50,7 @@ def download_vid(data:VideoRequest):
 
 @app.get('/download_file')
 def download_video_device(file_name:str):
-	file_path=os.path.join(base_dir,'donwnloads',file_name)
+	file_path=os.path.join(base_dir,'downloads',file_name)
 	return FileResponse(path=file_path,media_type='video/mp4',filename=file_name)
 	
 
