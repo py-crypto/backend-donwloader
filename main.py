@@ -9,7 +9,7 @@ import os
 import uuid
 
 app=FastAPI()
-
+base_dir=os.getcwd()
 class data(BaseModel):
 	url:str
 class VideoRequest(BaseModel):
@@ -49,7 +49,8 @@ def download_vid(data:VideoRequest):
 	
 
 @app.get('/download_file')
-def download_video_device(file_path:str,file_name:str):
+def download_video_device(file_name:str):
+	file_path=os.path.join(base_dir,'donwnloads',file_name)
 	return FileResponse(path=file_path,media_type='video/mp4',filename=file_name)
 	
 
